@@ -1,0 +1,14 @@
+name: software-pres
+channels:
+  - conda-forge
+dependencies:
+  - black
+  - conda-build
+  - dags
+  - estimagic>=0.3.1
+  - ipykernel
+  - pdbpp
+  - pip
+  - pypandoc
+  - pytask
+  - python=3.9

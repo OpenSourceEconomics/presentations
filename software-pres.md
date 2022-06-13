@@ -5,6 +5,13 @@ author: Hans-Martin von Gaudecker
 organization: Universität Bonn & IZA
 ---
 
+### Take-aways CPH for future talks
+
+- Be very clear about whom we want to convince with a presentation (experts, beginners, applied people)
+- Focus on LCM, not too much distraction to estimagic (remove pytask entirely)
+- Keep one example throughout — start with single-period, then include life-cycle dimension
+- Will need clear examples for applied user / expert user depending on audience.
+
 ### Ferrall’s (2020) Tale of Two Papers
 
 - Thomas MaCurdy (1981). “An Empirical Model of Labor Supply in a Life-Cycle Setting,” Journal of Political Economy 89, 6, 1059-1085.
@@ -22,8 +29,6 @@ organization: Universität Bonn & IZA
 - Fixed cost of entering the field later
 - Software quality, code sharing culture
 - Division of labor difficult (counterexample: develop treatment effect estimator and supply R package)
-
-Σ Much slower progress than in other fields
 
 ### Libraries for solving / estimating structural models
 
@@ -94,7 +99,6 @@ organization: Universität Bonn & IZA
   - Testing
   - Optimizing
   - Adjusting for changes in model
--->
 
 ### OOP vs functional
 
@@ -114,6 +118,8 @@ organization: Universität Bonn & IZA
 - Running tasks in a complex project — pytask
 - Solution of dynamic programming problem — lcm
 
+-->
+
 ### Some helpers
 
 - [pybaum](https://github.com/OpenSourceEconomics/pybaum): (Fully) flexible specifications of parameters
@@ -126,9 +132,10 @@ organization: Universität Bonn & IZA
   - introspect of function arguments
   - build and execute DAG from that
 
-- [pytask](https://github.com/pytask-dev/): dags on steroids for running pipeline
+<!-- - [pytask](https://github.com/pytask-dev/): dags on steroids for running pipeline
   - files & functions as primitives
   - allows mixing in R, Julia, Stata; compilation of LaTeX documents, ...
+-->
 
 ### pybaum
 

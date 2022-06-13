@@ -21,7 +21,7 @@ organization: Universität Bonn & IZA
 - Time to PhD / content thereof
 - Fixed cost of entering the field later
 - Software quality, code sharing culture
-- Division of labor difficult (counterexample: develop treatmentment effect estimator and supply R package)
+- Division of labor difficult (counterexample: develop treatment effect estimator and supply R package)
 
 Σ Much slower progress than in other fields
 
@@ -130,20 +130,45 @@ organization: Universität Bonn & IZA
   - files & functions as primitives
   - allows mixing in R, Julia, Stata; compilation of LaTeX documents, ...
 
+### pybaum
+
+Specify your parameters as:
+
+```python
+start_params = {
+    "preferences": {
+        "leisure_weight": 0.9,
+        "ces": 0.5
+    },
+    "work": {
+        "hourly_wage": 25,
+        "hours": 2_000
+    },
+    "time_budget": 24 * 7 * 365,
+    "consumption_floor": 3_000,
+}
+```
+
 ### dags
 
 ```py
-def utility(consumption, leisure, leisure_weight):
-    return consumption + leisure_weight * leisure
+def utility(consumption, leisure, params):
+    ɑ = params["preferences"]["leisure_weight"]
+    ɣ = params["preferences"]["ces"]
+    c = (1 - ɑ) ** (1 / ɣ) * consumption ** ((ɣ - 1) / ɣ)
+    l = ɑ ** (1 / ɣ) * leisure ** ((ɣ - 1) / ɣ)
+    return (c + l) ** (ɣ / (ɣ - 1))
+
+def leisure(params):
+    return params["time_budget"] - params["work"]["hours"]
 
 
-def leisure(working_hours):
-    return 24 - working_hours
+def income(params):
+    return params["work"]["hourly_wage"] * params["work"]["hours"]
 
-
-def consumption(working_hours, wage):
-    return wage * working_hours
-
+def consumption(income, params):
+    c_min = params["consumption_floor"]
+    return income if income > c_min else c_min
 
 def unrelated(working_hours):
     raise NotImplementedError()
@@ -153,122 +178,22 @@ def unrelated(working_hours):
 
 ```py
 model = dags.concatenate_functions(
-    functions=[utility, unrelated, leisure, consumption],
+    functions=[utility, unrelated, leisure, consumption, income],
     targets=["utility", "consumption"],
     return_type="dict"
 )
-
-model(wage=5, working_hours=8, leisure_weight=2)
-{'utility': 72, 'consumption': 40}
 ```
 
-### pybaum
+### (aside: estimagic)
 
-Specify your parameters as:
+See notebook
 
-```python
-start_params = {
-    "Type 0": {
-        "β": 0.95,
-        "ɣ": 2.0
-    },
-    "Type 1": {
-        "β": 0.98,
-        "ɣ": 2.0
-    },
-    "consumption_floor": 3_000,
-}
-```
+### LCM: Basic building blocks
 
-### estimagic
-
-- Collection of optimizers with
-  - Unified and well designed interface
-  - Flexible handling of constraints (fixing parameters, bounds, adding-up)
-  - Real time dashboard
-- Includes all optimisation algorithms from scipy
-- Has specialized optimizers for nonlinear least squares (e.g., POUNDerS)
-  (Parallelized) numerical differentiation
-- Inference and sensitivity analysis for ML / GMM / MSM
-
-### Start parameters
-
-```py
-start*params = pd.DataFrame(
-data=np.arange(5) + 1, columns=["value"], index=[f"x*{i}" for i in range(5)]
-)
-
-    value
-
-x_0     1
-x_1     2
-x_2     3
-x_3     4
-x_4     5
-```
-
-### Start parameters
-
-- Can be DataFrame with any index
-  “value” column is mandatory
-  “lower_bound”, “upper_bound” are optional
-
-### Minimise the sphere function
-
-```py
-res = minimize(
-    criterion=sphere,
-    params=start_params,
-    algorithm="scipy_lbfgsb",
-    logging="sphere_lbfgsb.db",
-)
-
-print(res)
-```
-
-### Result
-
-```
-{
-'solution*x': array([
-8.64900661e-07,
--4.24445584e-07,
--2.40790567e-07,
--2.27446962e-07,
-2.74273971e-07
-]),
-'solution_criterion': 1.1131456360722564e-12,
-'solution_derivative': array([
-1.73129144e-06,
--8.47401052e-07,
--4.80091018e-07,
--4.53403807e-07,
-5.50038057e-07
-]),
-'solution_hessian': None,
-'n_criterion_evaluations': 3,
-'n_derivative_evaluations': None,
-'n_iterations': 2,
-'success': True,
-'reached_convergence_criterion': None,
-'message': 'CONVERGENCE: NORM_OF_PROJECTED_GRADIENT*<=\_PGTOL',
-'solution_params':
-lower_bound upper_bound value
-x_0 -inf inf 8.649007e-07
-x_1 -inf inf -4.244456e-07
-x_2 -inf inf -2.407906e-07
-x_3 -inf inf -2.274470e-07
-x_4 -inf inf 2.742740e-07
-}
-```
-
-### Using the estimagic dashboard
-
-- Track evolution of parameters and criterion
-- Check evolution ex post
-- Can do more advanced stuff
-
-<!-- estimagic dashboard -->
+1. pybaum — Flexible structuring of parameters, data
+2. dags — has functions on individual states (all scalars)
+   - Not shown: Partial parameters that do not change in estimation right in beginning
+3. Dispatchers — Leverage Jax to vectorize scalar functions on almost arbitrary state-space
 
 ### LCM: Why?
 
@@ -285,44 +210,59 @@ x_4 -inf inf 2.742740e-07
 - Frontier researchers
 - Economists in policy analysis
 
-### LCM development: Guiding principles
+### Applied user
 
-- Ease of swapping different parts for custom implementations — Modularity
-- Extensive unit testing
-- Make use of tools actively developed in ML/AI community as much as possible
-- Allow for different solutions with respect to the computation — memory usage trade-off out of the box
+- Supplies economic primitives on per-state basis (i.e. everything scalar)
+  - Utility functions
+  - Constraints
+  - Descriptions of states and choice options
+  - State transitions based on states and choices (including filters that induce sparsity)
 
-### LCM development: Early implementation choices
+### LCM
 
-- Functional code organized by DAGs / introspection
-  - Extremely flexible
-  - No need to worry about execution order from user perspective
-- Speeding up based on JAX, Numba
-  - JAX great for computations on arrays, seamless choice of CPU/GPU/TPU
-  - Numba great for filtering / refinement operations (=logical → CPU)
-  - No need to take a stance on loop vs. vectorisation
+- Builds state space representation
+- Builds derived economic functions (e.g. value function, derivatives, ...) (still on scalars)
+- Infers parameters (anything that is not state or choice), yields template
+- Vectorises derived functions on state space
+- Builds solution, simulation and likelihood functions
 
-### LCM development: Current state
+### Expert user
 
-- Efficient interpolation
-- DAG (see test)
-  - Define functions
-  - Specify inputs
-  - Specify outputs
-  - Execution order automatically determined
-- All functions in DAG can be
-  - differentiated
-  - inverted (experimental)
-  - vectorised and evaluated efficiently on grids
+- Supplies same things as applied user
+- Thanks to dags implementation, may implement custom functions for anything
+  - State space representation
+  - Derived economic functions
+  - Vectorization operators directly
 
-### LCM development: Next steps
+### State space representation
 
-- Get prototype to run (did not decide on first state-space implementation yet)
-- Add realistic models as testcases (niqlow has a great selection)
-- Extend to frontier models as test cases
+- dense variables / Cartesian grid
+  - Memory efficient during calculation
+  - Memory hungry when storing value / policy functions
+  - Fast computations
+- contingent variables / combined grid
+  - Memory efficient when storing value / policy functions
+  - Save computations
+
+### Abstracting from type of variables / grid
+
+- Dispatcher / gridmap decorator provides abstraction during computation
+- LCM value / policy function provides abstraction during lookup (WIP, but basically solved)
+- No performance penalty
+
+### LCM benchmarks
+
+- See notebook
+
+### LCM: Roadmap
+
+- Most building blocks are done & tested
+- DC-EGM example with brute force should be working in September
+- Implement DC-EGM by November (one continuous choice, arbitrary number of DC)
+- Have frontier models running by Christmas
 
 ### Discussion
 
 - Suggestions for development?
-- What would be needed to make you use this ecosystem?
-- What would make you contribute? What could that be?
+- Interested in using (parts of) ecosystem?
+- Interested in helping develop (parts of) ecosystem?
